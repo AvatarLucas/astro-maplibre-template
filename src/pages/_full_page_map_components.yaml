@@ -1,6 +1,17 @@
-- id: 'Grave_Density_by_200'
-  label: 'Grave Density in New Orleans'
+- id: 'bikes'
+  label: 'Bike Lanes'
   toggle: true  
+  visible: false
+  data-type: 'geojson'
+  layer-type: 'line'
+  url: 'https://data.cityofnewyork.us/resource/mzxg-pwib.geojson?$limit=10000'
+  paint:
+    line-color: '#000000'
+    line-width: 3
+
+- id: 'pizza'
+  label: 'Pizza Places'
+  toggle: true
   visible: true
   data-type: 'geojson'
   layer-type: 'circle'

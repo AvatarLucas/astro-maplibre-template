@@ -153,7 +153,6 @@ main {
 /* Each section represents a new scrolling block */
 section {
   width: 50%;
-  
   min-height: 150vh; /* Each section takes up at least the full viewport height */
   border-bottom: 1px solid #ddd; /* Optional separator between sections */
   box-sizing: border-box;
@@ -170,6 +169,10 @@ section {
   width: 100vw;
   height: 100vh; /* Full viewport height */
   z-index: 1; /* Behind the scrolling content */
+}
+
+.maplibregl-popup-content {
+  color: var(--text-color); 
 }
 
 #maplibre-scrollytelling-map {
@@ -221,7 +224,7 @@ section {
 }
 
 
-#menu {
+.menu {
   background: #fff;
   position: absolute;
   z-index: 1;
@@ -232,7 +235,7 @@ section {
   border: 1px solid rgba(0, 0, 0, 0.4);
 }
 
-#menu a {
+.menu a {
   font-size: 13px;
   color: #404040;
   display: block;
@@ -244,20 +247,49 @@ section {
   text-align: center;
 }
 
-#menu a:last-child {
+.menu a:last-child {
   border: none;
 }
 
-#menu a:hover {
+.menu a:hover {
   background-color: #f8f8f8;
   color: #404040;
 }
 
-#menu a.active {
+.menu a.active {
   background-color: black;
   color: #ffffff;
 }
 
-#menu a.active:hover {
+.menu a.active:hover {
   background: rgb(236, 55, 19);
+}
+
+.map-overlay {
+  background-color: #fff;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  font:
+      12px/20px 'Helvetica Neue',
+      Arial,
+      Helvetica,
+      sans-serif;
+  padding: 10px;
+  position: absolute;
+  left: 10px;
+  z-index: 1;
+  color: black;
+  bottom: 10px;
+  left: 10px;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.inline-map {
+  position: relative;
 }
