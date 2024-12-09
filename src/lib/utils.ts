@@ -52,12 +52,14 @@ export function loadMapLayers(
   layers: LayerGroup,
   visibility: boolean = false
 ) {
+  console.log("Layers passed to loadMapLayers:", layers);
   if (layers) {
     // Add toggle buttons if set to be so
     Object.values(layers).forEach(
       (
         layer: GeoJSONFeatureLayer | RasterLayer | ImageLayer | VectorTileLayer
       ) => {
+        console.log("Processing layer:", layer.id); // Add this log here
         if (layer.toggle) {
           const toggleButton = document.createElement("a");
           const menu = document.getElementById(`${map._container.id}-menu`);
@@ -86,6 +88,8 @@ export function loadMapLayers(
         layer: GeoJSONFeatureLayer | RasterLayer | ImageLayer | VectorTileLayer
       ) => {
         if (layer["data-type"] === "geojson") {
+          console.log("Processing GeoJSON layer:", layer.id, "with URL:", layer.url);
+          
           fetch(layer.url)
             .then((response) => response.json())
             .then((data) => {
@@ -115,6 +119,7 @@ export function loadMapLayers(
 
               // Add source if it doesn't exist
               if (!map.getSource(layer.id)) {
+                console.log("Adding source for layer:", layer.id);
                 map.addSource(layer.id, {
                   type: "geojson",
                   data: data,

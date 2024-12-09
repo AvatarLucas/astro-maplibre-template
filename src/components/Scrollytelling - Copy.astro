@@ -33,6 +33,7 @@ export interface Props {
   mapstyle: string;
   container: string;
 
+  /** If `false`, the map will not respond to interaction.  This is a static map built with the full web map rendering API. */
   interactive?: boolean;
   containerstyle?: string;
   pitch?: number;
@@ -86,8 +87,14 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
       />
       <script>
         import maplibregl from "maplibre-gl";
+        import type {
+          GeoJSONFeatureLayer,
+          RasterLayer,
+          ImageLayer,
+          VectorTileLayer,
+        } from "@types";
+        import type { LngLatLike } from "maplibre-gl";
         import { loadMapLayers } from "@lib/utils";
-
         class MapLibreScrollytellingMap extends HTMLElement {
           constructor() {
             super();
@@ -105,13 +112,11 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
                 : undefined,
               style: this.dataset.mapstyle,
             });
-            window.map = map;
 
             map.on("load", () => {
-              
               const sections = document.querySelectorAll("section");
 
-               const observer = new IntersectionObserver(
+              const observer = new IntersectionObserver(
                 (entries) => {
                   entries.forEach((entry) => {
                     if (entry.isIntersecting) {
@@ -126,28 +131,89 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
                       const pitch = entry.target.getAttribute("data-pitch");
                       const bearing = entry.target.getAttribute("data-bearing");
 
+                      // parse layers
                       const layersAttr =
                         entry.target.getAttribute("data-layers");
                       const layers = layersAttr
                         ? JSON.parse(layersAttr)
                         : undefined;
-                      console.log("Layers being loaded into map:", layers);
                       if (layers) {
                         loadMapLayers(map, layers, true);
                       }
 
+                      // Update map position via animation type if specified
                       map[
                         (entry.target.getAttribute("data-map-animation") as
                           | "flyTo"
                           | "easeTo"
                           | "jumpTo") ?? "flyTo"
                       ]({
-                        center,
+                        center: center as LngLatLike,
                         zoom: zoom ? parseFloat(zoom) : undefined,
                         pitch: pitch ? parseFloat(pitch) : undefined,
                         bearing: bearing ? parseFloat(bearing) : undefined,
                         essential: true,
                       });
+
+                      const rotateAnimation =
+                        entry.target.getAttribute(
+                          "data-map-rotate-animation"
+                        ) === "true";
+                      
+                      if (rotateAnimation) {
+                        let rotationId: number;
+
+                        const rotateCamera = () => {
+                          const currentBearing = map.getBearing();
+                          map.rotateTo((currentBearing + 1) % 360, {duration: 50});
+                          rotationId = requestAnimationFrame(rotateCamera);
+                        };
+
+                        map.once("moveend", () => {
+                          rotateCamera();
+                        });
+
+                        entry.target.addEventListener(
+                          "mouseleave",
+                          () => {
+                              if (rotationId) {
+                                cancelAnimationFrame(rotationId);
+                              }
+                          },
+                          { once: true }
+                        );
+                      }
+
+                    } else {
+                      if (!entry.target.getAttribute("data-persist")) {
+                        // Remove the active class from the section
+                        entry.target.classList.remove("active");
+
+                        // Remove the layers from the map
+                        const layersAttr =
+                          entry.target.getAttribute("data-layers");
+                        const layers = layersAttr
+                          ? JSON.parse(layersAttr)
+                          : undefined;
+                        if (layers) {
+                          layers.forEach(
+                            (
+                              layer:
+                                | GeoJSONFeatureLayer
+                                | RasterLayer
+                                | ImageLayer
+                                | VectorTileLayer
+                            ) => {
+                              if (map.getLayer(layer.id)) {
+                                map.removeLayer(layer.id);
+                              }
+                              if (map.getSource(layer.id)) {
+                                map.removeSource(layer.id);
+                              }
+                            }
+                          );
+                        }
+                      }
                     }
                   });
                 },
@@ -156,51 +222,26 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
 
               sections.forEach((section) => observer.observe(section));
 
-              map.on("mousemove", "cemetery_polygons_fill", (e) => {
-                if (e.features && e.features.length > 0) {
-                  console.log("Hovering over:", e.features[0]);
+              map.addLayer({
+                id: "cemetery-glow",
+                type: "line",
+                source: "cemeterySource",
+                paint: {
+                  "line-color": "rgba(180,120,180,1)",
+                  "line-width": 12,
+                  "line-opacity": 0.7,
+                  "line-blur": 6
                 }
               });
 
-              // Add hover interaction for cemetery polygons
-              map.on("mousemove", "cemetery_polygons_fill", (e) => {
-                if (e.features && e.features.length > 0) {
-                  const featureId = e.features[0].id;
-
-                  // Highlight the corresponding outline
-                  map.setPaintProperty("cemetery_polygons_outline", "line-color", [
-                    "case",
-                    ["==", ["id"], featureId],
-                    "rgba(255, 20, 147, 1)", // Bright pink on hover
-                    "rgba(180, 0, 255, 1)", // Default neon purple
-                  ]);
-                }
-              });
-
-              map.on("mouseleave", "cemetery_polygons_fill", () => {
-                // Reset the outline color when no longer hovering
-                map.setPaintProperty(
-                  "cemetery_polygons_outline",
-                  "line-color",
-                  "rgba(180, 0, 255, 1)"
-                );
-              });
-
-              // Add click interaction for cemetery polygons
-              map.on("click", "cemetery_polygons_fill", (e) => {
-                if (e.features && e.features.length > 0) {
-                  const properties = e.features[0].properties;
-                  const zoomCenter = properties.zoomCenter ? JSON.parse(properties.zoomCenter) : undefined;
-                  const zoomLevel = properties.zoomLevel ? parseFloat(properties.zoomLevel) : 14;
-
-                  if (zoomCenter) {
-                    map.flyTo({
-                      center: zoomCenter,
-                      zoom: zoomLevel,
-                      essential: true,
-                    });
-                  }
-                }
+              map.on("mousemove", "cemetery-layer", (e) => {
+                const featureId = e.features[0].id;
+                map.setPaintProperty("cemetery-glow", "line-color", [
+                  "case",
+                  ["==", ["get", "id"], featureId],
+                  "rgba(255, 150, 255, 1)",
+                  "rgba(180, 120, 180, 1)"
+                ]);
               });
             });
           }
@@ -211,27 +252,30 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
     </maplibre-map>
   </div>
 
+  <!-- Scrolling Content -->
   <main>
-    {mapData.map((step, index) => (
-      <section
-        id={`section-${index}`}
-        data-center={JSON.stringify(step.center)}
-        data-zoom={step.zoom}
-        data-pitch={step.pitch}
-        data-bearing={step.bearing}
-        data-layers={JSON.stringify(step.layers)}
-        data-map-animation={step.mapAnimation}
-        data-map-rotate-animation={
-          step.rotateAnimation === true ? "true" : "false"
-        }
-        class:list={[step.position ? step.position : "lefty", "step"]}
-      >
-        <div class="step-content">
-          <h2>{step.title}</h2>
-          <p>{step.description}</p>
-          {step.media ? <img src={step.media} alt={step.title} /> : null}
-        </div>
-      </section>
-    ))}
+    {
+      mapData.map((step, index) => (
+        <section
+          id={`section-${index}`}
+          data-center={JSON.stringify(step.center)}
+          data-zoom={step.zoom}
+          data-pitch={step.pitch}
+          data-bearing={step.bearing}
+          data-layers={JSON.stringify(step.layers)}
+          data-map-animation={step.mapAnimation}
+          data-map-rotate-animation={
+            step.rotateAnimation === true ? "true" : "false"
+          }
+          class:list={[step.position ? step.position : "lefty", "step"]}
+        >
+          <div class="step-content">
+            <h2>{step.title}</h2>
+            <p>{step.description}</p>
+            {step.media ? <img src={step.media} alt={step.title} /> : null}
+          </div>
+        </section>
+      ))
+    }
   </main>
 </div>

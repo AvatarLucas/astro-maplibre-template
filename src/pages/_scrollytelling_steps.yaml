@@ -1,26 +1,25 @@
 - title: Introduction
   center: [-90.06992, 29.95687]
-  zoom: 13
+  zoom: 14
   pitch: 0
   bearing: 0
   description: Welcome to New Orleans, the city surrounded by and immersed in water, where physical, and cultural boundaries are constantly shifting. Here, the living and the dead have laid side by side above ground for centuries, rising and sinking with bacterial, viral, and oceanic tides.
+  rotateAnimation: false
 
 - title: Density in NOLA cemeteries
   center: [-90.11992, 29.98318]
-  zoom: 15
+  zoom: 13
   pitch: 0
   bearing: 320
-  description: Using a dot density map, we can start to parse the data on perished New Orleanians around the city. This can then be cross-checked against the age of each site and may yield clues on the social demographics of extant places of burial. 
-  
+  description: |
+    Pick a cemetery to find out more information. 
+    Hover over a polygon to see its name, and click to zoom in for more details.
+  rotateAnimation: false
+
   layers:
-  # id of layer
   - id: 'Grave_Density_by_200'
-  # path to dataset 
-  # note anything uploaded in the public/data folder will be uploaded to your site at url/data/file.png
     url: './Grave_Density_by_200.geojson'
-  # type of symbol
     type: 'circle'
-  # type of symbol
     data-type: 'geojson'
     layer-type: 'circle'
     persist: true
@@ -29,6 +28,32 @@
       circle-color: '#b2ab6d'
       circle-opacity: 0.8
 
+  - id: 'cemetery_polygons_fill'
+    url: './cemetery_polygons.geojson'
+    type: 'fill'
+    data-type: 'geojson'
+    layer-type: 'fill'
+    persist: true
+    paint:
+      fill-opacity: 0 # Keep the fill invisible if you don't want it to cover other elements
+
+  - id: 'cemetery_polygons_outline'
+    url: './cemetery_polygons.geojson'
+    type: 'line'
+    data-type: 'geojson'
+    layer-type: 'line'
+    persist: true
+    paint:
+      line-color: "rgba(129, 0, 255, 1)" # Neon purple
+      line-width: 2
+      line-offset: -3
+      line-opacity: 1
+
+  - id: 'cemetery_centroids'
+    url: './cemetery_centroids.geojson'
+    data-type: 'geojson' # Non-visible centroids used for zooming
+    persist: true
+
 - title: Polygon Layer
   # center: [-73.96778, 40.78376]
   center: [-74.00739, 40.67930]
@@ -36,6 +61,7 @@
   pitch: 0
   bearing: 20
   description: Now we zoom to a new location. And add a polygon layer of the innundation zone from Hurricane Sandy via GeoJSON endpoint. Layer paint properties are passed (notice they are different from the syntax for the point layer). 
+  rotateAnimation: false
   layers:
   - id: 'sandy'
     url: 'https://data.cityofnewyork.us/resource/5xsi-dfpx.geojson'
@@ -57,3 +83,4 @@
   description: You can change the position of the overlay div using the position attribute, and can add images using the media attribute.
   media: https://img.atlasobscura.com/OGZXBPY6hP2AXBi-M97MjAYHr46wOlG4iPA1pz2owEI/rt:fit/h:390/q:81/sm:1/scp:1/ar:1/aHR0cHM6Ly9hdGxh/cy1kZXYuczMuYW1h/em9uYXdzLmNvbS91/cGxvYWRzL3BsYWNl/X2ltYWdlcy85NTI3/NzEyMWY1NWM5ZWIx/ZDRfMTM3ODE0MjA1/OTNfMjQ0ZmUxZDJj/OV9rLmpwZw.jpg
   position: right
+  rotateAnimation: false

@@ -1,5 +1,4 @@
 ---
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { LayerGroup } from "@types";
 import fs from "fs";
 import yaml from "js-yaml";
@@ -25,6 +24,8 @@ interface MapStep {
 }
 
 const mapData: MapStep[] = yaml.load(fileContents) as MapStep[];
+
+console.log("Loaded YAML Data:", mapData);
 
 export interface Props {
   latitude: number;
@@ -60,7 +61,6 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
 ---
 
 <div class="scrollytelling-container">
-  <!-- Map Container -->
   <div
     id={container}
     class="maplibre-scrollytelling map-container"
@@ -86,7 +86,6 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
       />
       <script>
         import maplibregl from "maplibre-gl";
-        import { loadMapLayers } from "@lib/utils";
 
         class MapLibreScrollytellingMap extends HTMLElement {
           constructor() {
@@ -105,13 +104,10 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
                 : undefined,
               style: this.dataset.mapstyle,
             });
-            window.map = map;
 
             map.on("load", () => {
-              
               const sections = document.querySelectorAll("section");
-
-               const observer = new IntersectionObserver(
+              const observer = new IntersectionObserver(
                 (entries) => {
                   entries.forEach((entry) => {
                     if (entry.isIntersecting) {
@@ -131,9 +127,13 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
                       const layers = layersAttr
                         ? JSON.parse(layersAttr)
                         : undefined;
-                      console.log("Layers being loaded into map:", layers);
+
                       if (layers) {
-                        loadMapLayers(map, layers, true);
+                        layers.forEach((layer) => {
+                          if (!map.getLayer(layer.id)) {
+                            map.addLayer(layer);
+                          }
+                        });
                       }
 
                       map[
@@ -155,53 +155,6 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
               );
 
               sections.forEach((section) => observer.observe(section));
-
-              map.on("mousemove", "cemetery_polygons_fill", (e) => {
-                if (e.features && e.features.length > 0) {
-                  console.log("Hovering over:", e.features[0]);
-                }
-              });
-
-              // Add hover interaction for cemetery polygons
-              map.on("mousemove", "cemetery_polygons_fill", (e) => {
-                if (e.features && e.features.length > 0) {
-                  const featureId = e.features[0].id;
-
-                  // Highlight the corresponding outline
-                  map.setPaintProperty("cemetery_polygons_outline", "line-color", [
-                    "case",
-                    ["==", ["id"], featureId],
-                    "rgba(255, 20, 147, 1)", // Bright pink on hover
-                    "rgba(180, 0, 255, 1)", // Default neon purple
-                  ]);
-                }
-              });
-
-              map.on("mouseleave", "cemetery_polygons_fill", () => {
-                // Reset the outline color when no longer hovering
-                map.setPaintProperty(
-                  "cemetery_polygons_outline",
-                  "line-color",
-                  "rgba(180, 0, 255, 1)"
-                );
-              });
-
-              // Add click interaction for cemetery polygons
-              map.on("click", "cemetery_polygons_fill", (e) => {
-                if (e.features && e.features.length > 0) {
-                  const properties = e.features[0].properties;
-                  const zoomCenter = properties.zoomCenter ? JSON.parse(properties.zoomCenter) : undefined;
-                  const zoomLevel = properties.zoomLevel ? parseFloat(properties.zoomLevel) : 14;
-
-                  if (zoomCenter) {
-                    map.flyTo({
-                      center: zoomCenter,
-                      zoom: zoomLevel,
-                      essential: true,
-                    });
-                  }
-                }
-              });
             });
           }
         }

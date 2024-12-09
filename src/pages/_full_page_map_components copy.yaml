@@ -1,4 +1,4 @@
-g- id: 'bikes'
+- id: 'bikes'
   label: 'Bike Lanes'
   toggle: true  
   visible: false
