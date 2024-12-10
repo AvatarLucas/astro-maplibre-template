@@ -8,5 +8,6 @@
         "./src/*"
       ]
     }
-  }
+  },
+  "include": ["src/**/*", "src/**/*.astro", "src/**/*.ts", "src/**/*.d.ts"]
 }

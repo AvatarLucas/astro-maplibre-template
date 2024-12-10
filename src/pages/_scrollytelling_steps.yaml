@@ -1,20 +1,67 @@
 - title: Introduction
   center: [-90.06992, 29.95687]
-  zoom: 14
+  zoom: 12
   pitch: 0
   bearing: 0
   description: Welcome to New Orleans, the city surrounded by and immersed in water, where physical, and cultural boundaries are constantly shifting. Here, the living and the dead have laid side by side above ground for centuries, rising and sinking with bacterial, viral, and oceanic tides.
   rotateAnimation: false
+  haltScrolly: false
+
+- title: "Explore Cemeteries"
+  center: [-90.06992, 29.95687]
+  zoom: 13
+  pitch: 0
+  bearing: 0
+  description: |
+    Use the dropdown menu below to explore individual cemeteries.
+    Hover or click on a cemetery polygon for more details.
+  rotateAnimation: false
+  haltScrolly: true
+  
+  layers:
+    - id: 'cemetery_polygons_fill'
+      url: './cemetery_polygons.geojson'
+      type: 'fill'
+      data-type: 'geojson'
+      layer-type: 'fill'
+      persist: true
+      paint:
+        fill-opacity: 0.1
+        fill-color: '#6a0dad'
+    
+    - id: 'cemetery_polygons_outline'
+      url: './cemetery_polygons.geojson'
+      type: 'line'
+      data-type: 'geojson'
+      layer-type: 'line'
+      persist: true
+      paint:
+        line-color: "rgba(129, 0, 255, 1)" # Neon purple
+        line-width: 2
+        line-offset: -3
+        line-opacity: 1
+
+    - id: 'Grave_Density_by_200'
+      url: './Grave_Density_by_200.geojson'
+      type: 'circle'
+      data-type: 'geojson'
+      layer-type: 'circle'
+      persist: true
+      paint:
+        circle-radius: 4
+        circle-color: '#b2ab6d'
+        circle-opacity: 0.8
 
 - title: Density in NOLA cemeteries
-  center: [-90.11992, 29.98318]
-  zoom: 13
+  center: [-90.11865, 29.98381]
+  zoom: 15
   pitch: 0
   bearing: 320
   description: |
     Pick a cemetery to find out more information. 
     Hover over a polygon to see its name, and click to zoom in for more details.
   rotateAnimation: false
+  haltScrolly: true
 
   layers:
   - id: 'Grave_Density_by_200'
@@ -31,15 +78,17 @@
   - id: 'cemetery_polygons_fill'
     url: './cemetery_polygons.geojson'
     type: 'fill'
+    interactive: true
     data-type: 'geojson'
     layer-type: 'fill'
     persist: true
     paint:
-      fill-opacity: 0 # Keep the fill invisible if you don't want it to cover other elements
+      fill-opacity: 0.1 # Keep the fill invisible if you don't want it to cover other elements
 
   - id: 'cemetery_polygons_outline'
     url: './cemetery_polygons.geojson'
     type: 'line'
+    interactive: true
     data-type: 'geojson'
     layer-type: 'line'
     persist: true
@@ -62,6 +111,7 @@
   bearing: 20
   description: Now we zoom to a new location. And add a polygon layer of the innundation zone from Hurricane Sandy via GeoJSON endpoint. Layer paint properties are passed (notice they are different from the syntax for the point layer). 
   rotateAnimation: false
+  haltScrolly: false
   layers:
   - id: 'sandy'
     url: 'https://data.cityofnewyork.us/resource/5xsi-dfpx.geojson'
@@ -84,3 +134,4 @@
   media: https://img.atlasobscura.com/OGZXBPY6hP2AXBi-M97MjAYHr46wOlG4iPA1pz2owEI/rt:fit/h:390/q:81/sm:1/scp:1/ar:1/aHR0cHM6Ly9hdGxh/cy1kZXYuczMuYW1h/em9uYXdzLmNvbS91/cGxvYWRzL3BsYWNl/X2ltYWdlcy85NTI3/NzEyMWY1NWM5ZWIx/ZDRfMTM3ODE0MjA1/OTNfMjQ0ZmUxZDJj/OV9rLmpwZw.jpg
   position: right
   rotateAnimation: false
+  haltScrolly: false

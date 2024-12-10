@@ -235,15 +235,19 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
               });
 
               map.on("mousemove", "cemetery-layer", (e) => {
-                const featureId = e.features[0].id;
-                map.setPaintProperty("cemetery-glow", "line-color", [
-                  "case",
-                  ["==", ["get", "id"], featureId],
-                  "rgba(255, 150, 255, 1)",
-                  "rgba(180, 120, 180, 1)"
-                ]);
+                if (e.features?.length > 0) { // Safe check for e.features
+                  const featureId = e.features[0].id;
+                  map.setPaintProperty("cemetery-glow", "line-color", [
+                    "case",
+                    ["==", ["get", "id"], featureId],
+                    "rgba(255, 150, 255, 1)", // Highlight color
+                    "rgba(180, 120, 180, 1)"  // Default color
+                  ]);
+                } else {
+                  console.log("No features detected under cursor.");
+                }
               });
-            });
+            } 
           }
         }
 

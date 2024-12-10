@@ -1,14 +1,11 @@
 ---
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { LayerGroup } from "@types";
 import fs from "fs";
 import yaml from "js-yaml";
 
 // Load and parse the YAML file
-const fileContents = fs.readFileSync(
-  "src/pages/_scrollytelling_steps.yaml",
-  "utf8"
-);
+const fileContents = fs.readFileSync("src/pages/_scrollytelling_steps.yaml", "utf8");
+
 interface MapStep {
   title: string;
   description: string;
@@ -25,6 +22,30 @@ interface MapStep {
 }
 
 const mapData: MapStep[] = yaml.load(fileContents) as MapStep[];
+
+const cemeteryCentroids = JSON.parse(fs.readFileSync("public/cemetery_centroids.geojson", "utf8"));
+const cemeteryPolygons = JSON.parse(fs.readFileSync("public/cemetery_polygons.geojson", "utf8"));
+
+interface Cemetery {
+  Name: string;
+  zoomCenter: [number, number];
+  zoomLevel: number;
+}
+
+const cemeteryOptions: Cemetery[] = cemeteryCentroids.features.map((centroid: any) => {
+  const Name = centroid.properties.Name;
+  const zoomCenter = centroid.properties.zoomCenter;
+  const matchingPolygon = cemeteryPolygons.features.find(
+    (polygon: any) => polygon.properties.Name === Name
+  );
+  const zoomLevel = matchingPolygon ? matchingPolygon.properties.zoomLevel : 14;
+
+  return {
+    Name,
+    zoomCenter,
+    zoomLevel,
+  };
+});
 
 export interface Props {
   latitude: number;
@@ -56,15 +77,15 @@ const {
   mapAnimation,
   rotateAnimation,
 } = Astro.props;
+
 const layersJson = layers ? JSON.stringify(layers) : undefined;
 ---
 
 <div class="scrollytelling-container">
-  <!-- Map Container -->
   <div
     id={container}
     class="maplibre-scrollytelling map-container"
-    style={{ width: "100vw", height: "100vh" }}
+    style="width: 100vw; height: 100vh;"
   >
     <maplibre-map
       data-latitude={latitude}
@@ -86,12 +107,11 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
       />
       <script>
         import maplibregl from "maplibre-gl";
-        import { loadMapLayers } from "@lib/utils";
 
         class MapLibreScrollytellingMap extends HTMLElement {
           constructor() {
             super();
-            var map = new maplibregl.Map({
+            const map = new maplibregl.Map({
               container: this.dataset.container || "maplibre-map",
               interactive: this.dataset.interactive
                 ? JSON.parse(this.dataset.interactive)
@@ -105,49 +125,80 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
                 : undefined,
               style: this.dataset.mapstyle,
             });
+
             window.map = map;
 
-            map.on("load", () => {
-              
-              const sections = document.querySelectorAll("section");
+            const infoBox = document.getElementById("info-box");
+            let haltScrolly = false;
 
-               const observer = new IntersectionObserver(
+            map.on("load", () => {
+              console.log("Map loaded!");
+
+              // Add layers
+              const layers = JSON.parse(this.dataset.layers || "[]");
+              layers.forEach((layer: any) => {
+                if (!map.getSource(layer.id)) {
+                  map.addSource(layer.id, {
+                    type: layer["data-type"] || "geojson",
+                    data: layer.url,
+                  });
+                }
+
+                if (!map.getLayer(layer.id)) {
+                  map.addLayer({
+                    id: layer.id,
+                    type: layer["layer-type"],
+                    source: layer.id,
+                    paint: layer.paint || {},
+                    layout: {
+                      visibility: layer.visible ? "visible" : "none",
+                    },
+                  });
+                }
+              });
+
+              // Cemetery polygons hover and click
+              map.on("mousemove", "cemetery_polygons_fill", () => {
+                map.getCanvas().style.cursor = "pointer";
+              });
+
+              map.on("mouseleave", "cemetery_polygons_fill", () => {
+                map.getCanvas().style.cursor = "";
+              });
+
+              map.on("click", "cemetery_polygons_fill", (e) => {
+                if (infoBox && e.features && e.features.length > 0) {
+                  const properties = e.features[0].properties;
+
+                  const name = properties.Name || "Unknown";
+                  const religion = properties.Religion || "Not specified";
+                  const burials = properties.Burials || "Unknown";
+                  const area = properties.area_sqft
+                    ? `${properties.area_sqft.toLocaleString()} sqft`
+                    : "Unknown";
+
+                  infoBox.innerHTML = `
+                    <h3>Cemetery Name: ${name}</h3>
+                    <p>Religion: ${religion}</p>
+                    <p>No. of Burials: ${burials}</p>
+                    <p>Land Area: ${area}</p>
+                  `;
+                  infoBox.style.display = "block";
+                }
+              });
+
+              // Scrollytelling observer
+              const sections = document.querySelectorAll("section");
+              const observer = new IntersectionObserver(
                 (entries) => {
                   entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                      entry.target.classList.add("active");
+                    if (entry.isIntersecting && !haltScrolly) {
+                      const centerAttr = entry.target.getAttribute("data-center");
+                      const zoomAttr = entry.target.getAttribute("data-zoom");
+                      const center = JSON.parse(centerAttr || "[]");
+                      const zoom = parseFloat(zoomAttr || "0");
 
-                      const centerAttr =
-                        entry.target.getAttribute("data-center");
-                      const center = centerAttr
-                        ? JSON.parse(centerAttr)
-                        : undefined;
-                      const zoom = entry.target.getAttribute("data-zoom");
-                      const pitch = entry.target.getAttribute("data-pitch");
-                      const bearing = entry.target.getAttribute("data-bearing");
-
-                      const layersAttr =
-                        entry.target.getAttribute("data-layers");
-                      const layers = layersAttr
-                        ? JSON.parse(layersAttr)
-                        : undefined;
-                      console.log("Layers being loaded into map:", layers);
-                      if (layers) {
-                        loadMapLayers(map, layers, true);
-                      }
-
-                      map[
-                        (entry.target.getAttribute("data-map-animation") as
-                          | "flyTo"
-                          | "easeTo"
-                          | "jumpTo") ?? "flyTo"
-                      ]({
-                        center,
-                        zoom: zoom ? parseFloat(zoom) : undefined,
-                        pitch: pitch ? parseFloat(pitch) : undefined,
-                        bearing: bearing ? parseFloat(bearing) : undefined,
-                        essential: true,
-                      });
+                      map.flyTo({ center, zoom, essential: true });
                     }
                   });
                 },
@@ -156,52 +207,31 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
 
               sections.forEach((section) => observer.observe(section));
 
-              map.on("mousemove", "cemetery_polygons_fill", (e) => {
-                if (e.features && e.features.length > 0) {
-                  console.log("Hovering over:", e.features[0]);
-                }
-              });
+              // Cemetery dropdown fly-to logic
+              const button = document.getElementById("zoom-button");
+              const dropdown = document.getElementById(
+                "cemetery-dropdown"
+              ) as HTMLSelectElement;
 
-              // Add hover interaction for cemetery polygons
-              map.on("mousemove", "cemetery_polygons_fill", (e) => {
-                if (e.features && e.features.length > 0) {
-                  const featureId = e.features[0].id;
+              if (dropdown && button) {
+                button.addEventListener("click", () => {
+                  const selectedIndex = dropdown.selectedIndex;
+                  const selectedOption = dropdown.options[selectedIndex];
+                  const coordinates = JSON.parse(
+                    selectedOption.getAttribute("data-coordinates") || "[]"
+                  );
+                  const zoomLevel = parseFloat(
+                    selectedOption.getAttribute("data-zoom") || "0"
+                  );
 
-                  // Highlight the corresponding outline
-                  map.setPaintProperty("cemetery_polygons_outline", "line-color", [
-                    "case",
-                    ["==", ["id"], featureId],
-                    "rgba(255, 20, 147, 1)", // Bright pink on hover
-                    "rgba(180, 0, 255, 1)", // Default neon purple
-                  ]);
-                }
-              });
+                  haltScrolly = true;
+                  map.flyTo({ center: coordinates, zoom: zoomLevel });
 
-              map.on("mouseleave", "cemetery_polygons_fill", () => {
-                // Reset the outline color when no longer hovering
-                map.setPaintProperty(
-                  "cemetery_polygons_outline",
-                  "line-color",
-                  "rgba(180, 0, 255, 1)"
-                );
-              });
-
-              // Add click interaction for cemetery polygons
-              map.on("click", "cemetery_polygons_fill", (e) => {
-                if (e.features && e.features.length > 0) {
-                  const properties = e.features[0].properties;
-                  const zoomCenter = properties.zoomCenter ? JSON.parse(properties.zoomCenter) : undefined;
-                  const zoomLevel = properties.zoomLevel ? parseFloat(properties.zoomLevel) : 14;
-
-                  if (zoomCenter) {
-                    map.flyTo({
-                      center: zoomCenter,
-                      zoom: zoomLevel,
-                      essential: true,
-                    });
-                  }
-                }
-              });
+                  setTimeout(() => {
+                    haltScrolly = false;
+                  }, 2000);
+                });
+              }
             });
           }
         }
@@ -211,25 +241,39 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
     </maplibre-map>
   </div>
 
+  <!-- Cemetery Info Box -->
+  <div id="info-box" class="info-box">
+    <p>Select a cemetery to view details.</p>
+  </div>
+
   <main>
     {mapData.map((step, index) => (
       <section
         id={`section-${index}`}
         data-center={JSON.stringify(step.center)}
         data-zoom={step.zoom}
-        data-pitch={step.pitch}
-        data-bearing={step.bearing}
-        data-layers={JSON.stringify(step.layers)}
-        data-map-animation={step.mapAnimation}
-        data-map-rotate-animation={
-          step.rotateAnimation === true ? "true" : "false"
-        }
         class:list={[step.position ? step.position : "lefty", "step"]}
       >
         <div class="step-content">
           <h2>{step.title}</h2>
           <p>{step.description}</p>
           {step.media ? <img src={step.media} alt={step.title} /> : null}
+          {step.title === "Explore Cemeteries" && (
+            <>
+              <select id="cemetery-dropdown">
+                {cemeteryOptions.map((cemetery) => (
+                  <option
+                    value={cemetery.Name}
+                    data-coordinates={JSON.stringify(cemetery.zoomCenter)}
+                    data-zoom={cemetery.zoomLevel}
+                  >
+                    {cemetery.Name}
+                  </option>
+                ))}
+              </select>
+              <button id="zoom-button">Go to Cemetery</button>
+            </>
+          )}
         </div>
       </section>
     ))}

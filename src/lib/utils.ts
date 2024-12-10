@@ -53,35 +53,68 @@ export function loadMapLayers(
   visibility: boolean = false
 ) {
   console.log("Layers passed to loadMapLayers:", layers);
+
   if (layers) {
-    // Add toggle buttons if set to be so
-    Object.values(layers).forEach(
-      (
-        layer: GeoJSONFeatureLayer | RasterLayer | ImageLayer | VectorTileLayer
-      ) => {
-        console.log("Processing layer:", layer.id); // Add this log here
-        if (layer.toggle) {
-          const toggleButton = document.createElement("a");
-          const menu = document.getElementById(`${map._container.id}-menu`);
-          toggleButton.textContent = layer.label ?? layer.id;
-          if (layer.visible === true) {
+    // Iterate through layers
+    Object.values(layers).forEach((layer) => {
+      console.log("Processing layer:", layer.id);
+
+      // Ensure layer has necessary properties
+      if (!layer.id || !layer.url) {
+        console.error(`Layer "${layer.id}" is missing id or url.`);
+        return; // Skip this layer
+      }
+
+      // Add the source if it doesn’t exist
+      if (!map.getSource(layer.id)) {
+        console.log(`Adding source for layer: ${layer.id}`);
+        map.addSource(layer.id, {
+          type: "geojson", // Assuming geojson source
+          data: layer.url,
+        });
+      }
+
+      // Add the layer if it doesn’t exist
+      if (!map.getLayer(layer.id)) {
+        console.log(`Adding layer: ${layer.id}`);
+        map.addLayer({
+          id: layer.id,
+          type: layer["layer-type"], // Use "layer-type" from YAML
+          source: layer.id,
+          paint: layer.paint || {}, // Default paint if not defined
+          layout: {
+            visibility: visibility ? "visible" : "none",
+          },
+        });
+
+        console.log(`Layer "${layer.id}" added successfully.`);
+      } else {
+        console.log(`Layer "${layer.id}" already exists.`);
+      }
+
+      // Handle toggle buttons if defined
+      if (layer.toggle) {
+        const toggleButton = document.createElement("a");
+        const menu = document.getElementById(`${map._container.id}-menu`);
+        toggleButton.textContent = layer.label ?? layer.id;
+        if (layer.visible) {
+          toggleButton.className = "active";
+        }
+        toggleButton.onclick = () => {
+          const visibility = map.getLayoutProperty(layer.id, "visibility");
+          if (visibility === "visible") {
+            map.setLayoutProperty(layer.id, "visibility", "none");
+            toggleButton.className = "";
+          } else {
+            map.setLayoutProperty(layer.id, "visibility", "visible");
             toggleButton.className = "active";
           }
-          toggleButton.onclick = () => {
-            if (map.getLayoutProperty(layer.id, "visibility") === "visible") {
-              map.setLayoutProperty(layer.id, "visibility", "none");
-              toggleButton.className = "";
-            } else {
-              map.setLayoutProperty(layer.id, "visibility", "visible");
-              toggleButton.className = "active";
-            }
-          };
-          if (menu) {
-            menu.appendChild(toggleButton);
-          }
+        };
+        if (menu) {
+          menu.appendChild(toggleButton);
         }
       }
-    );
+    });
 
     Object.values(layers).forEach(
       (
@@ -93,6 +126,7 @@ export function loadMapLayers(
           fetch(layer.url)
             .then((response) => response.json())
             .then((data) => {
+              console.log("Fetched data for layer:", layer.id, data); // Log fetched data
               data.features.forEach(
                 (feature: {
                   geometry: {
@@ -119,15 +153,28 @@ export function loadMapLayers(
 
               // Add source if it doesn't exist
               if (!map.getSource(layer.id)) {
-                console.log("Adding source for layer:", layer.id);
+                console.log(`Adding source for GeoJSON layer "${layer.id}"`);
                 map.addSource(layer.id, {
                   type: "geojson",
                   data: data,
                 });
+                // Confirm source addition
+                if (map.getSource(layer.id)) {
+                  console.log(`Source successfully added for "${layer.id}"`);
+                } else {
+                  console.error(`Failed to add source for "${layer.id}"`);
+                }
+              }
+
+              if (!layer["layer-type"]) {
+                console.log(`Skipping layer addition for non-visual data layer ")${layer.id}"`);
+                return; // Skip adding a layer if it's non-visual
               }
 
               // Add layer if it doesn't already exist
               if (!map.getLayer(layer.id)) {
+                console.log(`Adding layer "${layer.id}" with type "${layer["layer-type"]}"`);
+                console.log(`Paint properties for layer "${layer.id}":`, layer.paint);
                 map.addLayer({
                   id: layer.id,
                   type: layer["layer-type"],
@@ -143,6 +190,12 @@ export function loadMapLayers(
                         : "none",
                   },
                 });
+                // Confirm layer addition
+                if (map.getLayer(layer.id)) {
+                  console.log(`Layer successfully added for "${layer.id}"`);
+                } else {
+                  console.error(`Failed to add layer for "${layer.id}"`);
+                }
               }
             });
         } else if (layer["data-type"] === "raster") {

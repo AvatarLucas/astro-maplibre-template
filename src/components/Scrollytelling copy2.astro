@@ -1,0 +1,295 @@
+---
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import type { LayerGroup } from "@types";
+import fs from "fs";
+import yaml from "js-yaml";
+
+// Load and parse the YAML file
+const fileContents = fs.readFileSync(
+  "src/pages/_scrollytelling_steps.yaml",
+  "utf8"
+);
+interface MapStep {
+  title: string;
+  description: string;
+  center: [number, number];
+  zoom: number;
+  pitch?: number;
+  bearing?: number;
+  media?: string;
+  position?: "left" | "right" | "centered" | "full";
+  layers?: LayerGroup[];
+  persist?: boolean;
+  mapAnimation?: "flyTo" | "easeTo" | "jumpTo";
+  rotateAnimation?: boolean;
+}
+
+const mapData: MapStep[] = yaml.load(fileContents) as MapStep[];
+
+export interface Props {
+  latitude: number;
+  longitude: number;
+  zoom: number;
+  mapstyle: string;
+  container: string;
+
+  interactive?: boolean;
+  containerstyle?: string;
+  pitch?: number;
+  bearing?: number;
+  layers?: LayerGroup[];
+  mapAnimation?: "flyTo" | "easeTo" | "jumpTo";
+  rotateAnimation?: boolean;
+}
+
+const {
+  latitude,
+  longitude,
+  zoom,
+  mapstyle,
+  container,
+  interactive,
+  containerstyle = "height: 61.8vh",
+  pitch,
+  bearing,
+  layers,
+  mapAnimation,
+  rotateAnimation,
+} = Astro.props;
+const layersJson = layers ? JSON.stringify(layers) : undefined;
+---
+
+<div class="scrollytelling-container">
+  <!-- Map Container -->
+  <div
+    id={container}
+    class="maplibre-scrollytelling map-container"
+    style={{ width: "100vw", height: "100vh" }}
+  >
+    <maplibre-map
+      data-latitude={latitude}
+      data-longitude={longitude}
+      data-zoom={zoom}
+      data-mapstyle={mapstyle}
+      data-container={container}
+      data-interactive={interactive}
+      data-containerstyle={containerstyle}
+      data-pitch={pitch}
+      data-bearing={bearing}
+      data-layers={layersJson}
+      data-map-animation={mapAnimation}
+      data-map-rotate-animation={rotateAnimation}
+    >
+      <link
+        rel="stylesheet"
+        href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css"
+      />
+      <script>
+        import maplibregl from "maplibre-gl";
+        import { loadMapLayers } from "@lib/utils";
+
+        class MapLibreScrollytellingMap extends HTMLElement {
+          constructor() {
+            super();
+            var map = new maplibregl.Map({
+              container: this.dataset.container || "maplibre-map",
+              interactive: this.dataset.interactive
+                ? JSON.parse(this.dataset.interactive)
+                : false,
+              center: [
+                this.dataset.longitude ? parseFloat(this.dataset.longitude) : 0,
+                this.dataset.latitude ? parseFloat(this.dataset.latitude) : 0,
+              ],
+              zoom: this.dataset.zoom
+                ? parseFloat(this.dataset.zoom)
+                : undefined,
+              style: this.dataset.mapstyle,
+            });
+            window.map = map;
+
+            map.on("load", () => {
+            // Step 1: Check if layers exist
+            console.log("Checking if cemetery_polygons_fill layer exists:", map.getLayer("cemetery_polygons_fill"));
+            console.log("Checking if cemetery_polygons_outline layer exists:", map.getLayer("cemetery_polygons_outline"));
+
+            const cemeteryFillLayer = map.getLayer("cemetery_polygons_fill");
+            const cemeteryOutlineLayer = map.getLayer("cemetery_polygons_outline");
+
+            if (!cemeteryFillLayer) {
+              console.error("cemetery_polygons_fill layer is missing. Check YAML configuration or layer addition.");
+            } else {
+              console.log("cemetery_polygons_fill layer found:", cemeteryFillLayer);
+            }
+
+            if (!cemeteryOutlineLayer) {
+              console.error("cemetery_polygons_outline layer is missing. Check YAML configuration or layer addition.");
+            } else {
+              console.log("cemetery_polygons_outline layer found:", cemeteryOutlineLayer);
+            }
+
+            // Step 2: Log and ensure visibility
+            console.log("cemetery_polygons_fill visibility:", map.getLayoutProperty("cemetery_polygons_fill", "visibility"));
+            map.setLayoutProperty("cemetery_polygons_fill", "visibility", "visible");
+
+            console.log("Layer details for cemetery_polygons_fill:", map.getLayer("cemetery_polygons_fill"));
+
+            // Step 3: Add diagnostics for hover and click
+            map.on("mousemove", "cemetery_polygons_fill", (e) => {
+              if (e.features && e.features.length > 0) {
+                console.log("Features under cursor:", e.features);
+              } else {
+                console.log("No features detected under cursor.");
+              }
+            });
+
+            map.on("click", "cemetery_polygons_fill", (e) => {
+              if (e.features && e.features.length > 0) {
+                console.log("Click detected on cemetery_polygons_fill. Features:", e.features);
+              } else {
+                console.log("Click on cemetery_polygons_fill, but no features detected.");
+              }
+            });
+
+            //map.on("mousemove", (e) => {
+            //  console.log("Map-wide mousemove detected:", e);
+            //});
+
+            map.on("click", (e) => {
+              console.log("Map-wide click detected:", e);
+            });
+
+              let haltScrolly = false; // Flag to halt scrolly
+              const sections = document.querySelectorAll("section");
+
+               const observer = new IntersectionObserver(
+                (entries) => {
+                  entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                      entry.target.classList.add("active");
+
+                      const centerAttr = entry.target.getAttribute("data-center");
+                      const center = centerAttr ? JSON.parse(centerAttr) : undefined;
+                      const zoom = entry.target.getAttribute("data-zoom");
+                      const pitch = entry.target.getAttribute("data-pitch");
+                      const bearing = entry.target.getAttribute("data-bearing");
+
+                      const layersAttr = entry.target.getAttribute("data-layers");
+                      const layers = layersAttr ? JSON.parse(layersAttr) : undefined;
+                      
+                      if (layers) {
+                        loadMapLayers(map, layers, true);
+
+                        const visibility = map.getLayoutProperty("cemetery_polygons_fill", "visibility");
+                        console.log("cemetery_polygons_fill visibility (during scrollytelling):", visibility);
+
+                        if (visibility !== "visible") {
+                          console.log("Setting cemetery_polygons_fill to visible during scrollytelling.");
+                          map.setLayoutProperty("cemetery_polygons_fill", "visibility", "visible");
+                        }
+                      }
+
+                      map[
+                        (entry.target.getAttribute("data-map-animation") as "flyTo" | "easeTo" | "jumpTo") ?? "flyTo"
+                      ]({
+                        center,
+                        zoom: zoom ? parseFloat(zoom) : undefined,
+                        pitch: pitch ? parseFloat(pitch) : undefined,
+                        bearing: bearing ? parseFloat(bearing) : undefined,
+                        essential: true,
+                      });
+                    }
+                  });
+                },
+                { threshold: 0.5 }
+              );
+
+              sections.forEach((section) => observer.observe(section));
+
+              // Hover interaction for cemetery polygons
+              map.on("mousemove", "cemetery_polygons_fill", (e) => {
+                console.log("Mousemove event triggered on cemetery_polygons_fill. Features:", e.features);
+
+                if (e.features && e.features.length > 0) {
+                  const feature = e.features[0];
+                  console.log("Feature properties:", feature.properties); // Check the properties object
+                  console.log("Feature ID:", feature.id); // Verify the ID exists
+
+                  // Highlight the hovered feature
+                  map.setPaintProperty("cemetery_polygons_outline", "line-color", [
+                    "case",
+                    ["==", ["get", "id"], feature.id],
+                    "rgba(255, 20, 147, 1)", // Highlight color
+                    "rgba(180, 0, 255, 1)", // Default color
+                  ]);
+                } else {
+                  console.log("No features detected under mouse pointer on cemetery_polygons_fill.");
+                }
+              });
+
+              //reset hover effects on mouseLeave
+              map.on("mouseleave", "cemetery_polygons_fill", () => {
+                console.log("Mouse left the polygons layer."); // Confirm the event
+                map.setPaintProperty("cemetery_polygons_outline", "line-color", "rgba(180, 0, 255, 1)");
+              });
+
+              map.on("click", "cemetery_polygons_fill", (e) => {
+                console.log("Click event triggered on cemetery_polygons_fill. Features:", e.features);
+
+                if (e.features && e.features.length > 0) {
+                  const properties = e.features[0].properties;
+                  console.log("Clicked feature properties:", properties);
+
+                  const zoomCenter = properties.zoomCenter
+                    ? JSON.parse(properties.zoomCenter)
+                    : e.lngLat;
+                  const zoomLevel = properties.zoomLevel
+                    ? parseFloat(properties.zoomLevel)
+                    : 14;
+
+                  console.log("Zooming to center:", zoomCenter, "at zoom level:", zoomLevel);
+
+                  map.flyTo({
+                    center: zoomCenter,
+                    zoom: zoomLevel,
+                    essential: true,
+                  });
+                  
+                  haltScrolly = false; // Resume scrolly
+                  console.log("Scrolly resumed after click.");
+                } else {
+                  console.warn("Click detected, but no features found under the cursor.");
+                }
+              });
+            });
+          }
+        }
+
+        window.customElements.define("maplibre-map", MapLibreScrollytellingMap);
+      </script>
+    </maplibre-map>
+  </div>
+
+  <main>
+    {mapData.map((step, index) => (
+      <section
+        id={`section-${index}`}
+        data-center={JSON.stringify(step.center)}
+        data-zoom={step.zoom}
+        data-pitch={step.pitch}
+        data-bearing={step.bearing}
+        data-layers={JSON.stringify(step.layers)}
+        data-map-animation={step.mapAnimation}
+        data-map-rotate-animation={
+          step.rotateAnimation === true ? "true" : "false"
+        }
+        class:list={[step.position ? step.position : "lefty", "step"]}
+      >
+        <div class="step-content">
+          <h2>{step.title}</h2>
+          <p>{step.description}</p>
+          {step.media ? <img src={step.media} alt={step.title} /> : null}
+        </div>
+      </section>
+    ))}
+  </main>
+</div>

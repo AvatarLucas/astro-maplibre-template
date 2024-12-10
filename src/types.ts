@@ -198,3 +198,8 @@ export interface ContentBlock {
   classList?: string;
   content: MapBlock | MixedBlock | ContentBlock[]; // Mixed content allows nesting
 }
+declare global {
+  interface Window {
+    map: import("maplibre-gl").Map;
+  }
+}
