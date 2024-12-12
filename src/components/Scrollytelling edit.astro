@@ -2,12 +2,20 @@
 import type { LayerGroup } from "@types";
 import fs from "fs";
 import yaml from "js-yaml";
+import { isScrollytellingEnabled, disableScrollytellingTemporarily } from "@lib/utils";
+
+// Log the functions to ensure they are recognized
+console.log(isScrollytellingEnabled); // Should log the function
+console.log(disableScrollytellingTemporarily); // Should log the function
+
+// Usage example
+console.log(isScrollytellingEnabled()); // Should print true initially
+disableScrollytellingTemporarily(1000); // Temporarily disable for 1 second
+setTimeout(() => console.log(isScrollytellingEnabled()), 2000); // Should print true again after 2 seconds
 
 // Load and parse the YAML file
-const fileContents = fs.readFileSync(
-  "src/pages/_scrollytelling_steps.yaml",
-  "utf8"
-);
+const fileContents = fs.readFileSync("src/pages/_scrollytelling_steps.yaml", "utf8");
+
 interface MapStep {
   title: string;
   description: string;
@@ -24,8 +32,42 @@ interface MapStep {
 }
 
 const mapData: MapStep[] = yaml.load(fileContents) as MapStep[];
+console.log("Parsed YAML mapData:", mapData);
 
-console.log("Loaded YAML Data:", mapData);
+// Load cemetery data
+const cemeteryCentroids = JSON.parse(fs.readFileSync("public/cemetery_centroids.geojson", "utf8"));
+const cemeteryPolygons = JSON.parse(fs.readFileSync("public/cemetery_polygons.geojson", "utf8"));
+
+interface Cemetery {
+  Name: string;
+  zoomCenter: [number, number];
+  zoomLevel: number;
+  Religion: string;
+  Burials: number;
+  area_sqft: number;
+}
+
+const cemeteryOptions: Cemetery[] = cemeteryCentroids.features.map((centroid: any) => {
+  const Name = centroid.properties.Name;
+  const zoomCenter = centroid.properties.zoomCenter;
+  const matchingPolygon = cemeteryPolygons.features.find(
+    (polygon: any) => polygon.properties.Name === Name
+  );
+  const zoomLevel = matchingPolygon ? matchingPolygon.properties.zoomLevel : 14;
+
+  const Religion = matchingPolygon?.properties?.Religion || "Unknown";
+  const Burials = matchingPolygon?.properties?.Burials || 0;
+  const area_sqft = matchingPolygon?.properties?.area_sqft || 0;
+
+  return {
+    Name,
+    zoomCenter,
+    zoomLevel,
+    Religion,
+    Burials,
+    area_sqft,
+  };
+});
 
 export interface Props {
   latitude: number;
@@ -57,10 +99,12 @@ const {
   mapAnimation,
   rotateAnimation,
 } = Astro.props;
+
 const layersJson = layers ? JSON.stringify(layers) : undefined;
 ---
 
 <div class="scrollytelling-container">
+  <!-- Map Container -->
   <div
     id={container}
     class="maplibre-scrollytelling map-container"
@@ -86,11 +130,13 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
       />
       <script>
         import maplibregl from "maplibre-gl";
+        import { loadMapLayers } from "@lib/utils";
+        import { isScrollytellingEnabled, disableScrollytellingTemporarily } from "@lib/utils";
 
         class MapLibreScrollytellingMap extends HTMLElement {
           constructor() {
             super();
-            var map = new maplibregl.Map({
+            const map = new maplibregl.Map({
               container: this.dataset.container || "maplibre-map",
               interactive: this.dataset.interactive
                 ? JSON.parse(this.dataset.interactive)
@@ -105,49 +151,199 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
               style: this.dataset.mapstyle,
             });
 
+            window.map = map;
+
+            //Rotation function
+            let isRotating = false; // Add this variable at the top level of your script
+
+            function animate(time: number) {
+              if (isRotating) {
+                map.rotateTo((time / 100) % 360, { duration: 0 });
+                requestAnimationFrame(animate); // Continue the animation loop
+              } else {
+                console.log("rotateCamera stopped");
+              }
+            }
+
+            function rotateCamera() {
+              if (!isRotating) {
+                isRotating = true;
+                console.log("rotateCamera started");
+                requestAnimationFrame(animate);
+              }
+            }
+
+            let haltScrolly = false;
+
             map.on("load", () => {
+              // Add the hexagonal layer after the map is loaded
+              map.addSource("hexagonal-data", {
+                type: "geojson",
+                data: "./hexagon-data.geojson" // Adjust the path to your actual file location in the public folder
+              });
+
+              map.addLayer({
+                id: "hexagons",
+                type: "fill-extrusion",
+                source: "hexagonal-data",
+                paint: {
+                  // Set a fixed height if "count" is not defined or interpolate based on "count"
+                  "fill-extrusion-height": [
+                    "interpolate",
+                    ["linear"],
+                    ["get", "count"], // Use default 0 if "count" is missing
+                    0, 0,
+                    30, 150 // Max extrusion height for high density
+                  ],
+                  "fill-extrusion-color": [
+                    "interpolate",
+                    ["linear"],
+                    ["get", "count"], // Use default 0 if "count" is missing
+                    1, "#4B0082",  // Dark Purple
+                    3, "#7A1FA2",  // Medium Dark Purple
+                    5, "#A858C2",  // Medium Purple
+                    10, "#D48AE2", // Medium Light Purple
+                    15, "#F0B1FF", // Light Purple
+                    30, "#F8E7FF"  // Bright Light Purple
+                  ],
+                  "fill-extrusion-opacity": 0.8
+                }
+              });
+
+              // Log that the hexagonal layer has been added
+              console.log("Hexagonal layer added successfully.");
+
+              const rotateAnimation = this.dataset.mapRotateAnimation === 'true';
+              if (rotateAnimation && !haltScrolly) {
+                rotateCamera();; // Pass timestamp for rotation
+              }
+
+              const popup = new maplibregl.Popup({
+                closeButton: true,
+                closeOnClick: true,
+                className: "cemetery-popup", // Custom class name
+              });
+
+              // Dropdown and Button Logic
+              const button = document.getElementById("zoom-button");
+              const dropdown = document.getElementById("cemetery-dropdown") as HTMLSelectElement | null;
+
+              if (dropdown && button) {
+                button.addEventListener("click", () => {
+                  if (dropdown.selectedIndex !== -1) {
+                    const selectedIndex = dropdown.selectedIndex; // No TypeScript error now
+                    const selectedOption = dropdown.options[selectedIndex]; // No TypeScript error now
+
+                    const cemetery = JSON.parse(
+                      selectedOption.getAttribute("data-cemetery") || "{}"
+                    );
+
+                    haltScrolly = true; // Halt scrollytelling temporarily
+
+                    map.flyTo({
+                      center: cemetery.zoomCenter,
+                      zoom: cemetery.zoomLevel,
+                      essential: true,
+                    });
+
+                    popup
+                      .setLngLat(cemetery.zoomCenter)
+                      .setHTML(
+                        `<h3>${cemetery.Name}</h3>
+                        <p>Religion: ${cemetery.Religion}</p>
+                        <p>No. of Burials: ${cemetery.Burials}</p>
+                        <p>Land Area: ${cemetery.area_sqft.toLocaleString()} sqft</p>`
+                      )
+                      .addTo(map);
+
+                    setTimeout(() => {
+                      haltScrolly = false; // Re-enable scrollytelling after delay
+                    }, 2000);
+                  } else {
+                    console.error("No option selected in the dropdown!");
+                  }
+                });
+              } else {
+                console.error("Dropdown or button is missing!");
+              }
+
+              // Scrollytelling logic
               const sections = document.querySelectorAll("section");
               const observer = new IntersectionObserver(
                 (entries) => {
+                  if (!isScrollytellingEnabled()) return;
+                  // Prevent scrollytelling if disabled
+                  
                   entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                      entry.target.classList.add("active");
+                    if (entry.isIntersecting && !haltScrolly) {
+                      const titleElement = entry.target.querySelector("h2");
+                      const title = titleElement ? titleElement.textContent : null;
 
-                      const centerAttr =
-                        entry.target.getAttribute("data-center");
-                      const center = centerAttr
-                        ? JSON.parse(centerAttr)
-                        : undefined;
-                      const zoom = entry.target.getAttribute("data-zoom");
-                      const pitch = entry.target.getAttribute("data-pitch");
-                      const bearing = entry.target.getAttribute("data-bearing");
+                      // Log for debugging
+                      console.log(`Section title: ${title}`);
 
-                      const layersAttr =
-                        entry.target.getAttribute("data-layers");
-                      const layers = layersAttr
-                        ? JSON.parse(layersAttr)
-                        : undefined;
+                      // Toggle layers based on the title
+                      if (title === "Density in NOLA cemeteries") {
+                        map.setLayoutProperty("Grave_Density_by_200", "visibility", "visible");
+                        map.setLayoutProperty("hexagon_data_layer", "visibility", "none");
+                      } else if (title === "Saint Louis Cemetery No. 2") {
+                        map.setLayoutProperty("Grave_Density_by_200", "visibility", "none");
+                        map.setLayoutProperty("hexagon_data_layer", "visibility", "visible");
+                      } else {
+                        // Default case: Hide both layers
+                        map.setLayoutProperty("Grave_Density_by_200", "visibility", "none");
+                        map.setLayoutProperty("hexagon_data_layer", "visibility", "none");
+                      }
 
-                      if (layers) {
-                        layers.forEach((layer) => {
-                          if (!map.getLayer(layer.id)) {
-                            map.addLayer(layer);
-                          }
+                      // Fly to the section's attributes
+                      const centerAttr = entry.target.getAttribute("data-center");
+                      const zoomAttr = entry.target.getAttribute("data-zoom");
+                      const pitchAttr = entry.target.getAttribute("data-pitch");
+                      const bearingAttr = entry.target.getAttribute("data-bearing");
+                      const rotateAnimationAttr = entry.target.getAttribute("data-map-rotate-animation");
+
+                      const center = centerAttr ? JSON.parse(centerAttr) : undefined;
+                      const zoom = zoomAttr ? parseFloat(zoomAttr) : undefined;
+                      const pitch = pitchAttr ? parseFloat(pitchAttr) : undefined;
+                      const bearing = bearingAttr ? parseFloat(bearingAttr) : undefined;
+                      const rotateAnimation = rotateAnimationAttr === 'true';
+
+                      // Log the current section and rotateAnimation state
+                      console.log(`Observer triggered for section: ${entry.target.id}`);
+                      console.log(`Rotate animation for section: ${entry.target.id} -> ${rotateAnimation}`);
+
+
+                      map.flyTo({
+                        center,
+                        zoom,
+                        pitch,
+                        bearing,
+                        essential: true,
+                        animate: true,
+                      });
+
+                      if (rotateAnimation && !haltScrolly) {
+                        map.once('moveend', () => {
+                          console.log(`Starting rotation for section: ${entry.target.id}`);
+                          rotateCamera();
                         });
                       }
 
-                      map[
-                        (entry.target.getAttribute("data-map-animation") as
-                          | "flyTo"
-                          | "easeTo"
-                          | "jumpTo") ?? "flyTo"
-                      ]({
-                        center,
-                        zoom: zoom ? parseFloat(zoom) : undefined,
-                        pitch: pitch ? parseFloat(pitch) : undefined,
-                        bearing: bearing ? parseFloat(bearing) : undefined,
-                        essential: true,
-                      });
+                       // Clear the popup when moving to the next section
+                      popup.remove();
+
+                      // Handle layers defined in the section
+                      const layersAttr = entry.target.getAttribute("data-layers");
+                      const layers = layersAttr ? JSON.parse(layersAttr) : undefined;
+                      if (layers) {
+                        loadMapLayers(map, layers, true);
+                      }
+
+                      if (haltScrolly) {
+                        setTimeout(() => {
+                          haltScrolly = false;
+                        }, 2000);
+                      }
                     }
                   });
                 },
@@ -159,11 +355,15 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
           }
         }
 
-        window.customElements.define("maplibre-map", MapLibreScrollytellingMap);
+        window.customElements.define(
+          "maplibre-map",
+          MapLibreScrollytellingMap
+        );
       </script>
     </maplibre-map>
   </div>
 
+  <!-- Scrollytelling Content -->
   <main>
     {mapData.map((step, index) => (
       <section
@@ -182,7 +382,24 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
         <div class="step-content">
           <h2>{step.title}</h2>
           <p>{step.description}</p>
-          {step.media ? <img src={step.media} alt={step.title} /> : null}
+          {step.media ? <img src={step.media} alt={step.title} class="step-media" /> : null}
+          {step.title === "Explore Cemeteries" && (
+            <div>
+              <select id="cemetery-dropdown" style="margin-top: 10px;">
+                {cemeteryOptions.map((cemetery) => (
+                  <option
+                    value={cemetery.Name}
+                    data-cemetery={JSON.stringify(cemetery)}
+                  >
+                    {cemetery.Name}
+                  </option>
+                ))}
+              </select>
+              <button id="zoom-button" style="margin-top: 10px;">
+                Go to Cemetery
+              </button>
+            </div>
+          )}
         </div>
       </section>
     ))}
