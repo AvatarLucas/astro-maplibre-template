@@ -32,6 +32,7 @@ interface MapStep {
 }
 
 const mapData: MapStep[] = yaml.load(fileContents) as MapStep[];
+console.log("Parsed YAML mapData:", mapData);
 
 // Load cemetery data
 const cemeteryCentroids = JSON.parse(fs.readFileSync("public/cemetery_centroids.geojson", "utf8"));
@@ -173,6 +174,43 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
             let haltScrolly = false;
 
             map.on("load", () => {
+              // Add the hexagonal layer after the map is loaded
+              map.addSource("hexagonal-data", {
+                type: "geojson",
+                data: "./hexagon-data.geojson" // Adjust the path to your actual file location in the public folder
+              });
+
+              map.addLayer({
+                id: "hexagons",
+                type: "fill-extrusion",
+                source: "hexagonal-data",
+                paint: {
+                  // Set a fixed height if "count" is not defined or interpolate based on "count"
+                  "fill-extrusion-height": [
+                    "interpolate",
+                    ["linear"],
+                    ["get", "count"], // Use default 0 if "count" is missing
+                    0, 0,
+                    30, 150 // Max extrusion height for high density
+                  ],
+                  "fill-extrusion-color": [
+                    "interpolate",
+                    ["linear"],
+                    ["get", "count"], // Use default 0 if "count" is missing
+                    1, "#4B0082",  // Dark Purple
+                    3, "#7A1FA2",  // Medium Dark Purple
+                    5, "#A858C2",  // Medium Purple
+                    10, "#D48AE2", // Medium Light Purple
+                    15, "#F0B1FF", // Light Purple
+                    30, "#F8E7FF"  // Bright Light Purple
+                  ],
+                  "fill-extrusion-opacity": 0.8
+                }
+              });
+
+              // Log that the hexagonal layer has been added
+              console.log("Hexagonal layer added successfully.");
+
               const rotateAnimation = this.dataset.mapRotateAnimation === 'true';
               if (rotateAnimation && !haltScrolly) {
                 rotateCamera(Date.now()); // Pass timestamp for rotation
@@ -236,6 +274,26 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
                   
                   entries.forEach((entry) => {
                     if (entry.isIntersecting && !haltScrolly) {
+                      const titleElement = entry.target.querySelector("h2");
+                      const title = titleElement ? titleElement.textContent : null;
+
+                      // Log for debugging
+                      console.log(`Section title: ${title}`);
+
+                      // Toggle layers based on the title
+                      if (title === "Density in NOLA cemeteries") {
+                        map.setLayoutProperty("Grave_Density_by_200", "visibility", "visible");
+                        map.setLayoutProperty("hexagon_data_layer", "visibility", "none");
+                      } else if (title === "Saint Louis Cemetery No. 2") {
+                        map.setLayoutProperty("Grave_Density_by_200", "visibility", "none");
+                        map.setLayoutProperty("hexagon_data_layer", "visibility", "visible");
+                      } else {
+                        // Default case: Hide both layers
+                        map.setLayoutProperty("Grave_Density_by_200", "visibility", "none");
+                        map.setLayoutProperty("hexagon_data_layer", "visibility", "none");
+                      }
+
+                      // Fly to the section's attributes
                       const centerAttr = entry.target.getAttribute("data-center");
                       const zoomAttr = entry.target.getAttribute("data-zoom");
                       const pitchAttr = entry.target.getAttribute("data-pitch");
@@ -322,6 +380,7 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
         <div class="step-content">
           <h2>{step.title}</h2>
           <p>{step.description}</p>
+          {step.media ? <img src={step.media} alt={step.title} class="step-media" /> : null}
           {step.title === "Explore Cemeteries" && (
             <div>
               <select id="cemetery-dropdown" style="margin-top: 10px;">

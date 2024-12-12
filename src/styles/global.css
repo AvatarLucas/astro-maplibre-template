@@ -220,6 +220,13 @@ section {
   font-size: 15px;
 }
 
+.step-media {
+  max-width: 100%;
+  height: auto;
+  margin-top: 1rem;
+  border-radius: 4px;
+}
+
 .step-content { 
   width: 100%;
   max-width: 500px; /* Limit the maximum width to make it narrower */
