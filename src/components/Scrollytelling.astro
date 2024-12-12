@@ -179,7 +179,7 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
               // Add the hexagonal layer after the map is loaded
               map.addSource("hexagonal-data", {
                 type: "geojson",
-                data: "./hexagon-data.geojson" // Adjust the path to your actual file location in the public folder
+                data: "/astro-maplibre-template/hexagon-data.geojson" // Adjust the path to your actual file location in the public folder
               });
 
               map.addLayer({
