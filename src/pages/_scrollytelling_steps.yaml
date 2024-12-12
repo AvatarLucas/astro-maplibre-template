@@ -114,7 +114,7 @@
   bearing: 270
   description: Founded in 1823, St. Louis Cemetery No. 2 was originally designed to replace No. 1, but the earlier cemetery was never closed. Using a more formal layout, it was originally one plot running from Canal St to St. Louis St, but was carved up into 4 blocks by the city for Iberville, Bienville and Conti Streets. The church sold the block nearest Canal in 1846 and it has remained three blocks ever since. 
   rotateAnimation: true
-  haltScrolly: false
+  haltScrolly: true
   layers:
   - id: 'sandy'
     url: 'https://data.cityofnewyork.us/resource/5xsi-dfpx.geojson'

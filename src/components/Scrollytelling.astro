@@ -130,6 +130,7 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
       <script>
         import maplibregl from "maplibre-gl";
         import { loadMapLayers } from "@lib/utils";
+        import { isScrollytellingEnabled, disableScrollytellingTemporarily } from "@lib/utils";
 
         class MapLibreScrollytellingMap extends HTMLElement {
           constructor() {
@@ -151,10 +152,31 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
 
             window.map = map;
 
+            //Rotation function
+            let isRotating = false; // Add this variable at the top level of your script
+
+            function rotateCamera(timestamp: number) {
+              if (!isRotating) {
+                isRotating = true; // Prevent additional rotation loops
+                console.log("rotateCamera started");
+                requestAnimationFrame(function animate(time) {
+                  if (isRotating) { // Continue rotation only if isRotating is true
+                    map.rotateTo((time / 100) % 360, { duration: 0 });
+                    requestAnimationFrame(animate); // Keep looping
+                  } else {
+                    console.log("rotateCamera stopped");
+                  }
+                });
+              }
+            }
+
             let haltScrolly = false;
 
             map.on("load", () => {
-              console.log("Map loaded!");
+              const rotateAnimation = this.dataset.mapRotateAnimation === 'true';
+              if (rotateAnimation && !haltScrolly) {
+                rotateCamera(Date.now()); // Pass timestamp for rotation
+              }
 
               const popup = new maplibregl.Popup({
                 closeButton: true,
@@ -213,16 +235,23 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
                   // Prevent scrollytelling if disabled
                   
                   entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
+                    if (entry.isIntersecting && !haltScrolly) {
                       const centerAttr = entry.target.getAttribute("data-center");
                       const zoomAttr = entry.target.getAttribute("data-zoom");
                       const pitchAttr = entry.target.getAttribute("data-pitch");
                       const bearingAttr = entry.target.getAttribute("data-bearing");
+                      const rotateAnimationAttr = entry.target.getAttribute("data-map-rotate-animation");
 
                       const center = centerAttr ? JSON.parse(centerAttr) : undefined;
                       const zoom = zoomAttr ? parseFloat(zoomAttr) : undefined;
                       const pitch = pitchAttr ? parseFloat(pitchAttr) : undefined;
                       const bearing = bearingAttr ? parseFloat(bearingAttr) : undefined;
+                      const rotateAnimation = rotateAnimationAttr === 'true';
+
+                      // Log the current section and rotateAnimation state
+                      console.log(`Observer triggered for section: ${entry.target.id}`);
+                      console.log(`Rotate animation for section: ${entry.target.id} -> ${rotateAnimation}`);
+
 
                       map.flyTo({
                         center,
@@ -230,7 +259,15 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
                         pitch,
                         bearing,
                         essential: true,
+                        animate: true,
                       });
+
+                      if (rotateAnimation && !haltScrolly) {
+                        map.once('moveend', () => {
+                          console.log(`Starting rotation for section: ${entry.target.id}`);
+                          rotateCamera(Date.now());
+                        });
+                      }
 
                        // Clear the popup when moving to the next section
                       popup.remove();
@@ -242,8 +279,11 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
                         loadMapLayers(map, layers, true);
                       }
 
-                      // Temporarily disable scrollytelling for 5 seconds
-                      disableScrollytellingTemporarily(5000); // Set delay to 5 seconds
+                      if (haltScrolly) {
+                        setTimeout(() => {
+                          haltScrolly = false;
+                        }, 2000);
+                      }
                     }
                   });
                 },
@@ -273,6 +313,10 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
         data-pitch={step.pitch}
         data-bearing={step.bearing}
         data-layers={JSON.stringify(step.layers)}
+        data-map-animation={step.mapAnimation}
+        data-map-rotate-animation={
+          step.rotateAnimation === true ? "true" : "false"
+        }
         class:list={[step.position ? step.position : "lefty", "step"]}
       >
         <div class="step-content">
