@@ -47,6 +47,19 @@ export function dateRange(startDate: Date, endDate?: Date | string): string {
   return `${startMonth}${startYear} - ${endMonth}${endYear}`;
 }
 
+let scrollytellingEnabled = true;
+
+export function isScrollytellingEnabled(): boolean {
+  return scrollytellingEnabled;
+}
+
+export function disableScrollytellingTemporarily(delay: number): void {
+  scrollytellingEnabled = false;
+  setTimeout(() => {
+    scrollytellingEnabled = true;
+  }, delay);
+}
+
 export function loadMapLayers(
   map: maplibregl.Map,
   layers: LayerGroup,

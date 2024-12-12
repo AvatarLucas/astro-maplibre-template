@@ -2,6 +2,16 @@
 import type { LayerGroup } from "@types";
 import fs from "fs";
 import yaml from "js-yaml";
+import { isScrollytellingEnabled, disableScrollytellingTemporarily } from "@lib/utils";
+
+// Log the functions to ensure they are recognized
+console.log(isScrollytellingEnabled); // Should log the function
+console.log(disableScrollytellingTemporarily); // Should log the function
+
+// Usage example
+console.log(isScrollytellingEnabled()); // Should print true initially
+disableScrollytellingTemporarily(1000); // Temporarily disable for 1 second
+setTimeout(() => console.log(isScrollytellingEnabled()), 2000); // Should print true again after 2 seconds
 
 // Load and parse the YAML file
 const fileContents = fs.readFileSync("src/pages/_scrollytelling_steps.yaml", "utf8");
@@ -199,23 +209,20 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
               const sections = document.querySelectorAll("section");
               const observer = new IntersectionObserver(
                 (entries) => {
+                  if (!isScrollytellingEnabled()) return;
+                  // Prevent scrollytelling if disabled
+                  
                   entries.forEach((entry) => {
-                    if (entry.isIntersecting && !haltScrolly) {
+                    if (entry.isIntersecting) {
                       const centerAttr = entry.target.getAttribute("data-center");
                       const zoomAttr = entry.target.getAttribute("data-zoom");
                       const pitchAttr = entry.target.getAttribute("data-pitch");
                       const bearingAttr = entry.target.getAttribute("data-bearing");
 
-                      const center = centerAttr
-                        ? JSON.parse(centerAttr)
-                        : undefined;
+                      const center = centerAttr ? JSON.parse(centerAttr) : undefined;
                       const zoom = zoomAttr ? parseFloat(zoomAttr) : undefined;
-                      const pitch = pitchAttr
-                        ? parseFloat(pitchAttr)
-                        : undefined;
-                      const bearing = bearingAttr
-                        ? parseFloat(bearingAttr)
-                        : undefined;
+                      const pitch = pitchAttr ? parseFloat(pitchAttr) : undefined;
+                      const bearing = bearingAttr ? parseFloat(bearingAttr) : undefined;
 
                       map.flyTo({
                         center,
@@ -225,14 +232,18 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
                         essential: true,
                       });
 
+                       // Clear the popup when moving to the next section
+                      popup.remove();
+
+                      // Handle layers defined in the section
                       const layersAttr = entry.target.getAttribute("data-layers");
                       const layers = layersAttr ? JSON.parse(layersAttr) : undefined;
                       if (layers) {
                         loadMapLayers(map, layers, true);
                       }
 
-                      // Clear the popup when moving to the next section
-                      popup.remove();
+                      // Temporarily disable scrollytelling for 5 seconds
+                      disableScrollytellingTemporarily(5000); // Set delay to 5 seconds
                     }
                   });
                 },

@@ -1,6 +1,6 @@
 - title: Introduction
-  center: [-90.06992, 29.95687]
-  zoom: 12
+  center: [-90.13174, 29.97788]
+  zoom: 11.5
   pitch: 0
   bearing: 0
   description: Welcome to New Orleans, the city surrounded by and immersed in water, where physical, and cultural boundaries are constantly shifting. Here, the living and the dead have laid side by side above ground for centuries, rising and sinking with bacterial, viral, and oceanic tides.
@@ -13,8 +13,8 @@
   pitch: 0
   bearing: 0
   description: |
-    Use the dropdown menu below to explore individual cemeteries.
-    Hover or click on a cemetery polygon for more details.
+    Use the dropdown menu below and click to explore
+    data on one of the many cemeteries in NOLA.
   rotateAnimation: false
   haltScrolly: true
   
@@ -58,8 +58,11 @@
   pitch: 0
   bearing: 320
   description: |
-    Pick a cemetery to find out more information. 
-    Hover over a polygon to see its name, and click to zoom in for more details.
+    The points you see are known as a dot density map.  
+    Each one represents a 1:100 ratio of perished New Orleanians
+    and are randomly placed within the grounds of the site.
+    This yields a visual cue to the density in each plot and
+    is directly tied to age and wealth within NOLA.
   rotateAnimation: false
   haltScrolly: true
 
@@ -103,14 +106,14 @@
     data-type: 'geojson' # Non-visible centroids used for zooming
     persist: true
 
-- title: Polygon Layer
+- title: St. Louis Cemetery No. 2
   # center: [-73.96778, 40.78376]
-  center: [-74.00739, 40.67930]
-  zoom: 14
+  center: [-90.075, 29.96]
+  zoom: 17
   pitch: 0
-  bearing: 20
-  description: Now we zoom to a new location. And add a polygon layer of the innundation zone from Hurricane Sandy via GeoJSON endpoint. Layer paint properties are passed (notice they are different from the syntax for the point layer). 
-  rotateAnimation: false
+  bearing: 270
+  description: Founded in 1823, St. Louis Cemetery No. 2 was originally designed to replace No. 1, but the earlier cemetery was never closed. Using a more formal layout, it was originally one plot running from Canal St to St. Louis St, but was carved up into 4 blocks by the city for Iberville, Bienville and Conti Streets. The church sold the block nearest Canal in 1846 and it has remained three blocks ever since. 
+  rotateAnimation: true
   haltScrolly: false
   layers:
   - id: 'sandy'

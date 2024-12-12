@@ -11,8 +11,8 @@
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-color: rgba(40, 40, 40, 1); /* Dark background */
-    --text-color: #eee; /* Lighter text for dark mode */
+    --bg-color: rgba(50, 14, 53, 1); /* Dark background */
+    --text-color: #ffffff; /* Lighter text for dark mode */
   }
 }
 
@@ -174,10 +174,11 @@ section {
 
 .maplibre-container .cemetery-popup,
 .maplibregl-popup-content {
-  background: rgba(255, 255, 255, 0.5) !important; /* Adjust transparency */
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  padding: 10px;
+  background: rgba(14, 7, 29, 0.7) !important; /* Background color with opacity */
+  color: #ffffff !important; /* White text */
+  border-radius: 8px; /* Rounded corners */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); /* Optional shadow */
+  padding: 10px; /* Padding for inner content */
 }
 
 #maplibre-scrollytelling-map {
@@ -207,7 +208,7 @@ section {
 .step {
   padding-bottom: 50vh;
   /* margin-bottom: 10vh; */
-  opacity: 0.5;
+  opacity: 0.7;
 }
 .step.active {
   opacity: 0.9;
@@ -221,6 +222,7 @@ section {
 
 .step-content { 
   width: 100%;
+  max-width: 500px; /* Limit the maximum width to make it narrower */
   padding: 20px;
   background-color: var(--bg-color);
   color: var(--text-color);
