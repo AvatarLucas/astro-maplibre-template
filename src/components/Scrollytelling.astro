@@ -156,18 +156,20 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
             //Rotation function
             let isRotating = false; // Add this variable at the top level of your script
 
-            function rotateCamera(timestamp: number) {
+            function animate(time: number) {
+              if (isRotating) {
+                map.rotateTo((time / 100) % 360, { duration: 0 });
+                requestAnimationFrame(animate); // Continue the animation loop
+              } else {
+                console.log("rotateCamera stopped");
+              }
+            }
+
+            function rotateCamera() {
               if (!isRotating) {
-                isRotating = true; // Prevent additional rotation loops
+                isRotating = true;
                 console.log("rotateCamera started");
-                requestAnimationFrame(function animate(time) {
-                  if (isRotating) { // Continue rotation only if isRotating is true
-                    map.rotateTo((time / 100) % 360, { duration: 0 });
-                    requestAnimationFrame(animate); // Keep looping
-                  } else {
-                    console.log("rotateCamera stopped");
-                  }
-                });
+                requestAnimationFrame(animate);
               }
             }
 
@@ -213,7 +215,7 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
 
               const rotateAnimation = this.dataset.mapRotateAnimation === 'true';
               if (rotateAnimation && !haltScrolly) {
-                rotateCamera(Date.now()); // Pass timestamp for rotation
+                rotateCamera();; // Pass timestamp for rotation
               }
 
               const popup = new maplibregl.Popup({
@@ -323,7 +325,7 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
                       if (rotateAnimation && !haltScrolly) {
                         map.once('moveend', () => {
                           console.log(`Starting rotation for section: ${entry.target.id}`);
-                          rotateCamera(Date.now());
+                          rotateCamera();
                         });
                       }
 
