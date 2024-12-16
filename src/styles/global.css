@@ -227,9 +227,9 @@ section {
   border-radius: 4px;
 }
 
-.step-content { 
+.step-content {
   width: 100%;
-  max-width: 500px; /* Limit the maximum width to make it narrower */
+  max-width: 500px; /* This is the limitation */
   padding: 20px;
   background-color: var(--bg-color);
   color: var(--text-color);
@@ -237,6 +237,15 @@ section {
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
+/* Override the max-width when the full-width class is applied */
+.step-content.full-width {
+  max-width: 100%;  /* Full width */
+  padding: 20px;
+}
+
+.full-width-section {
+  width: 100%;
+}
 
 #menu {
   background: #fff;

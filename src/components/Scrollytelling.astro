@@ -29,6 +29,7 @@ interface MapStep {
   persist?: boolean;
   mapAnimation?: "flyTo" | "easeTo" | "jumpTo";
   rotateAnimation?: boolean;
+  contentClass?: string;
 }
 
 const mapData: MapStep[] = yaml.load(fileContents) as MapStep[];
@@ -279,9 +280,6 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
                       const titleElement = entry.target.querySelector("h2");
                       const title = titleElement ? titleElement.textContent : null;
 
-                      // Log for debugging
-                      console.log(`Section title: ${title}`);
-
                       // Toggle layers based on the title
                       if (title === "Density in NOLA cemeteries") {
                         map.setLayoutProperty("Grave_Density_by_200", "visibility", "visible");
@@ -377,9 +375,9 @@ const layersJson = layers ? JSON.stringify(layers) : undefined;
         data-map-rotate-animation={
           step.rotateAnimation === true ? "true" : "false"
         }
-        class:list={[step.position ? step.position : "lefty", "step"]}
+        class:list={[step.position ? step.position : "lefty", "step", step.contentClass === 'full-width' ? 'full-width-section' : '']}
       >
-        <div class="step-content">
+        <div class={`step-content ${step.contentClass || ''}`}>
           <h2>{step.title}</h2>
           <p>{step.description}</p>
           {step.media ? <img src={step.media} alt={step.title} class="step-media" /> : null}

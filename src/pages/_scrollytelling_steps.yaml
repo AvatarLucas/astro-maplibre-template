@@ -4,6 +4,7 @@
   pitch: 0
   bearing: 0
   description: Welcome to New Orleans, the city surrounded by and immersed in water, where physical, and cultural boundaries are constantly shifting. Here, the living and the dead have laid side by side above ground for centuries, rising and sinking with bacterial, viral, and oceanic tides.
+  contentClass: ''
   rotateAnimation: false
   haltScrolly: false
 
@@ -15,6 +16,7 @@
   description: |
     Use the dropdown menu below and click to explore
     data on one of the many cemeteries in NOLA.
+  contentClass: ''
   rotateAnimation: false
   haltScrolly: true
   
@@ -63,6 +65,7 @@
     and are randomly placed within the grounds of the site.
     This yields a visual cue to the density in each plot and
     is directly tied to age and wealth within NOLA.
+  contentClass: ''
   rotateAnimation: false
   haltScrolly: true
 
@@ -115,6 +118,7 @@
   pitch: 60
   bearing: 270
   description: Founded in 1823, St. Louis Cemetery No. 2 was  designed to replace No. 1, but the earlier cemetery was never closed. Originally one plot, it was carved up into 4 blocks for Iberville, Bienville and Conti Streets. The church sold the block nearest Canal in 1846. Using Uber's H3 hexagonal hierarchical spatial system and data from UPenn's Dead Space surveys in 2014, we can accurately represent density in 3D.
+  contentClass: ''
   rotateAnimation: true
   haltScrolly: true
   layers:
@@ -161,7 +165,27 @@
   pitch: 45
   bearing: 270
   description: The square to the South has different density of burials for a reason. The first to accept African Americans, a network of "society tombs" sprung up to service the needs of minorities and the poor in death. Today, most organizations are defunct, but preservationists have teamed up with Craftspeople to restore these tombs in the hope to tell this important history of Creole culture.
+  contentClass: ''
   rotateAnimation: false
   haltScrolly: false
   media: /astro-maplibre-template/ChristianDoctrineJoined.jpg
   position: right
+
+- title: Sources
+  center: [-90.13174, 29.97788]
+  zoom: 11.5
+  pitch: 0
+  bearing: 0
+  description: |
+    Thanks for their help and support in the making of this project:
+    Frank Matero, Historic Preservation, University of Pennsylvania.
+    Heather Veneziano, Historic Preservation, Tulane University.
+    Olivia Hoffman, New Orleans Catholic Cemeteries.
+    Everyone at the Historic New Orleans Collection who helped, www.hnoc.org.
+    Sources include but are not limited to the following websites: 
+    Dead Space II, St. Louis Cemetery No. 2, https://www.conlab.org
+    GeoData@COLUMBIA for Cemeteries and boundaries of NOLA
+    MapTiler for DarkMatter and Maputnik for customization
+  contentClass: '' # Full page width
+  rotateAnimation: false
+  haltScrolly: false
