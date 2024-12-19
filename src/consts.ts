@@ -3,7 +3,7 @@ import type { Metadata, Site, Socials } from "@types";
 export const SITE: Site = {
   NAME: "James E. Churchill NOLA beyond the pale",
   EMAIL: "james.churchill@columbia.edu",
-  DESCRIPTION: "",
+  DESCRIPTION: "© All Rights Reserved",
 };
 
 export const HOME: Metadata = {
